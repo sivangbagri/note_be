@@ -68,6 +68,40 @@ async def upload_audio(
     Returns:
     - Transcript ID, full transcript, summary, and processing duration
     """
+    # Generate a unique ID for this transcript
+    transcript_id = str(uuid.uuid4())
+
+    # Define the path where the audio will be saved
+    file_extension = file.filename.split(".")[-1]
+    audio_path = f"uploads/{transcript_id}.{file_extension}"
+
+    try:
+        # Save the uploaded audio file
+        with open(audio_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+
+        # Transcribe the audio file
+        transcript, duration = transcribe_audio(audio_path, language)
+
+        # Generate a summary of the transcript
+        summary = generate_summary(transcript, language)
+
+        # Store the transcript in the database (in the background)
+        background_tasks.add_task(add_transcript, transcript_id, transcript)
+
+        return {
+            "transcript_id": transcript_id,
+            "transcript": transcript,
+            "summary": summary,
+            "duration": duration
+        }
+    except Exception as e:
+        # If anything goes wrong, clean up the audio file and raise an error
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+        raise HTTPException(
+            status_code=500, detail=f"Processing error: {str(e)}")
 
 
 @app.get("/search", response_model=SearchResponse)
@@ -81,6 +115,11 @@ async def search(q: str):
     Returns:
     - List of matching transcript segments with context
     """
+    if not q or len(q.strip()) == 0:
+        return {"results": [], "count": 0}
+
+    results = search_transcripts(q.strip())
+    return {"results": results, "count": len(results)}
 
 
 @app.get("/export_pdf")
@@ -94,7 +133,28 @@ async def export_pdf(transcript_id: str):
     Returns:
     - PDF file as a download
     """
+    # Search for the transcript to get its content
+    results = search_transcripts(f"id:{transcript_id}")
 
+    if not results:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+
+    # Extract transcript text
+    transcript = " ".join([r["text"] for r in results])
+
+    # Generate summary
+    summary = generate_summary(transcript)
+
+    # Create PDF
+    pdf_path = generate_pdf(transcript_id, transcript, summary)
+
+    # Return the PDF file for download
+    filename = f"meeting_summary_{datetime.now().strftime('%Y%m%d')}.pdf"
+    return FileResponse(
+        path=pdf_path,
+        filename=filename,
+        media_type="application/pdf"
+    )
 
 # Run with: uvicorn main:app --reload
 if __name__ == "__main__":
