@@ -147,7 +147,7 @@ async def export_pdf(transcript_id: str):
 
     # Create PDF
     pdf_path = generate_pdf(transcript_id, transcript, summary)
-
+ 
     # Return the PDF file for download
     filename = f"meeting_summary_{datetime.now().strftime('%Y%m%d')}.pdf"
     return FileResponse(
