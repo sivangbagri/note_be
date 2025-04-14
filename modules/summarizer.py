@@ -1,7 +1,7 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.llms import HuggingFacePipeline
+from langchain_community.llms import HuggingFacePipeline
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import os
@@ -11,8 +11,8 @@ MODEL_CHOICE = "Qwen"
 MODEL_CONFIGS = {
     "Qwen": {
         # Can use Qwen/Qwen-14B-Chat for better results
-        "model_name": "Qwen/Qwen-7B-Chat",
-        "tokenizer_name": "Qwen/Qwen-7B-Chat"
+        "model_name": "Qwen/Qwen1.5-0.5B",
+        "tokenizer_name": "Qwen/Qwen1.5-0.5B"
     },
     "DeepSeek": {
         # Can use deepseek-ai/deepseek-llm-67b-chat for better results
@@ -22,20 +22,36 @@ MODEL_CONFIGS = {
 }
 
 SUMMARY_TEMPLATE = """
-You are an expert meeting assistant. Your task is to create a comprehensive summary of the following meeting transcript.
-Focus on key points, decisions made, and important discussions.
+You are an expert meeting assistant. Summarize the following meeting transcript clearly and concisely. 
 
-TRANSCRIPT:
+Focus on:
+- Key points and insights
+- Any decisions or commitments made
+- Actionable next steps
+
+Provide your response strictly in the following format:
+
+Overview:
+<high-level summary>
+
+Key Points:
+- point 1
+- point 2
+
+Action Items:
+- task 1 (assignee, if any)
+- task 2 (assignee, if any)
+
+Next Steps:
+- step 1
+- step 2
+
+Transcript:
 {transcript}
 
-Please provide a structured summary with these sections:
-1. Overview
-2. Key Points
-3. Action Items (with assignees if mentioned)
-4. Next Steps
-
-SUMMARY:
+Summary:
 """
+
 
 ACTION_ITEMS_TEMPLATE = """
 Extract all action items from the following meeting transcript. An action item is a task that someone committed to do.
@@ -49,6 +65,22 @@ TRANSCRIPT:
 
 ACTION ITEMS:
 """
+KEY_POINTS_TEMPLATE = """
+You are an assistant that extracts **key insights** from transcripts.
+
+Please extract the most important **Key Points** from the following meeting transcript.  
+They should be:
+- Clear, short, and focused
+- Not include action items or next steps
+- Ideally phrased as bullet points
+
+Transcript:
+{transcript}
+
+Key Points:
+- 
+"""
+
 
 # Initialize LLM model (will be loaded the first time it's used)
 _llm_instance = None
@@ -72,7 +104,9 @@ def _get_llm_instance():
 
         # Load tokenizer
         tokenizer = AutoTokenizer.from_pretrained(
-            model_config["tokenizer_name"])
+            model_config["tokenizer_name"],
+            trust_remote_code=True
+        )
 
         # Load model with appropriate config
         model = AutoModelForCausalLM.from_pretrained(
@@ -101,6 +135,26 @@ def _get_llm_instance():
     return _llm_instance
 
 
+CHUNK_WORDS = 1000
+
+
+def chunk_text(text: str, chunk_size: int = CHUNK_WORDS) -> List[str]:
+    words = text.split()
+    return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
+
+
+def clean_bullet_points(raw_text: str) -> List[str]:
+    lines = raw_text.split("\n")
+    cleaned = []
+    for line in lines:
+        line = line.strip()
+        if line.startswith(("-", "*", "•")):
+            point = line.strip("-*• ").strip()
+            if point and "extract" not in point.lower():
+                cleaned.append(point)
+    return list(set(cleaned))
+
+
 def generate_summary(transcript: str, language: Optional[str] = None) -> Dict[str, Any]:
     """
     Generates a structured summary of a meeting transcript using LLM.
@@ -127,6 +181,7 @@ def generate_summary(transcript: str, language: Optional[str] = None) -> Dict[st
         # Truncate if the transcript is too long
         max_tokens = 6000
         words = transcript.split()
+
         if len(words) > max_tokens:
             print(
                 f"Transcript too long ({len(words)} words), truncating to {max_tokens} words")
@@ -148,26 +203,66 @@ def generate_summary(transcript: str, language: Optional[str] = None) -> Dict[st
         # Run the chains
         print("Generating summary...")
         summary_result = summary_chain.run(transcript=transcript)
+        if "Summary:" in summary_result:
+            summary_result = summary_result.split("Summary:")[-1].strip()
 
         print("Extracting action items...")
         action_result = action_chain.run(transcript=transcript)
 
         parts = summary_result.split("\n\n")
         overview = parts[0] if len(parts) > 0 else ""
-
+        print("partsXX ", parts)
         # Extract key points
         key_points = []
-        for part in parts:
-            if "Key Points" in part:
-                points_text = part.split("Key Points:")[-1].strip()
-                key_points = [p.strip("- ").strip()
-                              for p in points_text.split("\n") if p.strip()]
-                break
+        # for part in parts:
+        #     if "Key Points" in part:
+        #         points_text = part.split("Key Points:")[-1].strip()
+        #         key_points = [p.strip("- ").strip()
+        #                       for p in points_text.split("\n") if p.strip()]
+        #         break
+
+        keypoints_prompt = PromptTemplate(
+            input_variables=["transcript"],
+            template=KEY_POINTS_TEMPLATE
+        )
+        keypoints_chain = LLMChain(llm=llm, prompt=keypoints_prompt)
+        print("Extracting key points...")
+        keypoints_result = keypoints_chain.run(transcript=transcript)
+        keypoints_result = keypoints_result.split(
+            "Key Points:")[-1].strip()
+        key_points = [line.strip("-* ").strip()
+                      for line in keypoints_result.split("\n") if line.strip()]
 
         action_items = []
         for line in action_result.split("\n"):
             if line.strip().startswith("-") or line.strip().startswith("*"):
                 action_items.append(line.strip("- *").strip())
+
+        # chunks = chunk_text(transcript, CHUNK_WORDS)
+
+        # all_key_points = []
+        # all_action_items = []
+
+        # for chunk in chunks:
+        #     # Key Points
+        #     keypoints_chain = LLMChain(
+        #         llm=llm,
+        #         prompt=PromptTemplate(
+        #             input_variables=["transcript"], template=KEY_POINTS_TEMPLATE)
+        #     )
+        #     keypoints_result = keypoints_chain.run(transcript=chunk)
+        #     key_points = clean_bullet_points(keypoints_result)
+        #     all_key_points.extend(key_points)
+
+        #     # Action Items
+        #     action_chain = LLMChain(
+        #         llm=llm,
+        #         prompt=PromptTemplate(
+        #             input_variables=["transcript"], template=ACTION_ITEMS_TEMPLATE)
+        #     )
+        #     action_result = action_chain.run(transcript=chunk)
+        #     action_items = clean_bullet_points(action_result)
+        #     all_action_items.extend(action_items)
 
         return {
             "overview": overview,

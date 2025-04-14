@@ -1,7 +1,7 @@
 from typing import Tuple, Optional
 import time
 import os
-import whisper  
+import whisper
 from pathlib import Path
 
 SUPPORTED_LANGUAGES = {
@@ -11,7 +11,7 @@ SUPPORTED_LANGUAGES = {
 }
 
 # Model size options: "tiny", "base", "small", "medium", "large"
-DEFAULT_MODEL_SIZE = "medium"
+DEFAULT_MODEL_SIZE = "tiny"
 
 
 def transcribe_audio(audio_path: str, language: Optional[str] = None) -> Tuple[str, float]:
@@ -36,7 +36,9 @@ def transcribe_audio(audio_path: str, language: Optional[str] = None) -> Tuple[s
     model = whisper.load_model(DEFAULT_MODEL_SIZE)
 
     # Prepare transcription options
-    options = {}
+    options = {
+        "task": "translate"
+    }
     if language:
         if language in SUPPORTED_LANGUAGES:
             options["language"] = language
