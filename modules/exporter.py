@@ -3,10 +3,15 @@ from fpdf import FPDF
 import os
 import textwrap
 from datetime import datetime
-
+from pathlib import Path
 OUTPUT_DIR = "../output"
 
 #
+BASE_DIR = Path(__file__).resolve().parent
+print("BASE_DIR " , BASE_DIR)
+font_path_B = BASE_DIR / "fonts" / "NotoSans-Bold.ttf"
+font_path_I = BASE_DIR / "fonts" / "NotoSans-Italic.ttf"
+font_path_R = BASE_DIR / "fonts" / "NotoSans-Regular.ttf"
 
 
 class MeetingSummaryPDF(FPDF):
@@ -14,9 +19,9 @@ class MeetingSummaryPDF(FPDF):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.alias_nb_pages()
-        self.add_font('NotoSans', 'B', 'fonts/NotoSans-Bold.ttf', uni=True)
-        self.add_font('NotoSans', 'I', 'fonts/NotoSans-Italic.ttf', uni=True)
-        self.add_font('NotoSans', '', 'fonts/NotoSans-Regular.ttf', uni=True)
+        self.add_font('NotoSans', 'B', str(font_path_B), uni=True)
+        self.add_font('NotoSans', 'I', str(font_path_I), uni=True)
+        self.add_font('NotoSans', '', str(font_path_R), uni=True)
         self.set_font('NotoSans', '', 11)
 
     def header(self):

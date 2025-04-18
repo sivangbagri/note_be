@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional, List, Dict, Any
@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import os
 import uuid
 from datetime import datetime
+import json
 
 from modules.transcriber import transcribe_audio
 from modules.summarizer import generate_summary
@@ -123,7 +124,7 @@ async def search(q: str):
 
 
 @app.get("/export_pdf")
-async def export_pdf(transcript_id: str):
+async def export_pdf(transcript_id: str, summary:str=Query(...)):
     """
     Generates and returns a PDF of the summary for a specific transcript.
 
@@ -133,6 +134,11 @@ async def export_pdf(transcript_id: str):
     Returns:
     - PDF file as a download
     """
+    try:
+        summary_dict = json.loads(summary)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid summary format")
+
     # Search for the transcript to get its content
     results = search_transcripts(f"id:{transcript_id}")
 
@@ -143,10 +149,10 @@ async def export_pdf(transcript_id: str):
     transcript = " ".join([r["text"] for r in results])
 
     # Generate summary
-    summary = generate_summary(transcript)
+    # summary = generate_summary(transcript)
 
     # Create PDF
-    pdf_path = generate_pdf(transcript_id, transcript, summary)
+    pdf_path = generate_pdf(transcript_id, transcript, summary_dict)
  
     # Return the PDF file for download
     filename = f"meeting_summary_{datetime.now().strftime('%Y%m%d')}.pdf"
