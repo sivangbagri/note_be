@@ -12,7 +12,7 @@ from modules.transcriber import transcribe_audio
 from modules.summarizer import generate_summary
 from modules.search import init_db, add_transcript, search_transcripts
 from modules.exporter import generate_pdf
-
+from utils.format import format_transcript
 
 app = FastAPI(
     title="Meeting Assistant API",
@@ -82,11 +82,11 @@ async def upload_audio(
             content = await file.read()
             buffer.write(content)
 
-        # Transcribe the audio file
+        
         transcript, duration = transcribe_audio(audio_path, language)
-
+        formatted_transcript = format_transcript(transcript)
         # Generate a summary of the transcript
-        summary = generate_summary(transcript, language)
+        summary = generate_summary(formatted_transcript, language)
 
         # Store the transcript in the database (in the background)
         background_tasks.add_task(add_transcript, transcript_id, transcript)
@@ -124,7 +124,7 @@ async def search(q: str):
 
 
 @app.get("/export_pdf")
-async def export_pdf(transcript_id: str, summary:str=Query(...)):
+async def export_pdf(transcript_id: str, summary: str = Query(...)):
     """
     Generates and returns a PDF of the summary for a specific transcript.
 
@@ -153,7 +153,7 @@ async def export_pdf(transcript_id: str, summary:str=Query(...)):
 
     # Create PDF
     pdf_path = generate_pdf(transcript_id, transcript, summary_dict)
- 
+
     # Return the PDF file for download
     filename = f"meeting_summary_{datetime.now().strftime('%Y%m%d')}.pdf"
     return FileResponse(
