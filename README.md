@@ -22,6 +22,7 @@ This is the **backend** for a multilingual AI meeting assistant built for the **
 | Framework  | FastAPI                   | Web API & routing                  |
 | ASR        | Whisper / Faster-Whisper  | Speech-to-text transcription       |
 | Summarizer | LangChain + Qwen/DeepSeek | Extracts summaries + action points |
+| Sentiment     | HuggingFace Transformers + `nlptown/bert` | Time based sentimental analysis of transcript
 | Storage    | SQLite (FTS5)             | Full-text searchable transcripts   |
 | PDF Export | fpdf                      | Generates PDF reports              |
 
