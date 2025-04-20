@@ -8,7 +8,7 @@ OUTPUT_DIR = "../output"
 
 #
 BASE_DIR = Path(__file__).resolve().parent
-print("BASE_DIR " , BASE_DIR)
+print("BASE_DIR ", BASE_DIR)
 font_path_B = BASE_DIR / "fonts" / "NotoSans-Bold.ttf"
 font_path_I = BASE_DIR / "fonts" / "NotoSans-Italic.ttf"
 font_path_R = BASE_DIR / "fonts" / "NotoSans-Regular.ttf"
@@ -29,7 +29,7 @@ class MeetingSummaryPDF(FPDF):
 
         self.set_font('NotoSans', 'B', 15)
         # title
-        self.cell(0, 10, 'Meeting Summary', 0, 1, 'C')
+        self.cell(0, 10, 'HOLON Meeting Summary', 0, 1, 'C')
         # date
         self.set_font('NotoSans', 'I', 10)
         self.cell(
@@ -74,7 +74,7 @@ def generate_pdf(transcript_id: str, transcript: str, summary: Dict[str, Any],
     pdf.set_font('NotoSans', '', 11)
     overview = summary.get("overview", "No overview available.")
     # Word wrap for long paras
-    for line in textwrap.wrap(overview, width=75):
+    for line in textwrap.wrap(overview, width=90):
         pdf.cell(0, 5, line, 0, 1)
     pdf.ln(5)
 
@@ -87,7 +87,7 @@ def generate_pdf(transcript_id: str, transcript: str, summary: Dict[str, Any],
         for point in key_points:
             pdf.cell(5, 5, "-", 0, 0)
             # Word wrap for each bullet point
-            lines = textwrap.wrap(point, width=70)
+            lines = textwrap.wrap(point, width=100)
             if lines:
                 pdf.cell(0, 5, lines[0], 0, 1)
                 # Indent
@@ -109,7 +109,7 @@ def generate_pdf(transcript_id: str, transcript: str, summary: Dict[str, Any],
         for i, action in enumerate(action_items, 1):
             pdf.cell(10, 5, f"{i}.", 0, 0)
             # Word wrap for each action item
-            lines = textwrap.wrap(action, width=65)
+            lines = textwrap.wrap(action, width=100)
             if lines:
                 pdf.cell(0, 5, lines[0], 0, 1)
                 for line in lines[1:]:
@@ -121,11 +121,20 @@ def generate_pdf(transcript_id: str, transcript: str, summary: Dict[str, Any],
         pdf.cell(0, 5, "No action items identified.", 0, 1)
     pdf.ln(10)
 
+    # sentiment image
+    image_path = BASE_DIR / "../output/sentiment_timeline.png"
+    if os.path.exists(image_path):
+        pdf.ln(10)
+        pdf.set_font('NotoSans', 'B', 14)
+        pdf.cell(0, 10, "Sentiment Timeline", 0, 1)
+        pdf.image(image_path, x=10, w=pdf.w - 20)  # adjust width to fit nicely
+        pdf.ln(10)
+
     #   full transcript
     pdf.set_font('NotoSans', 'B', 14)
     pdf.cell(0, 10, "Full Transcript", 0, 1)
     pdf.set_font('NotoSans', '', 10)
-    for line in textwrap.wrap(transcript, width=80):
+    for line in textwrap.wrap(transcript, width=100):
         pdf.cell(0, 5, line, 0, 1)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)

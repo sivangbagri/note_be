@@ -7,13 +7,13 @@ import os
 import uuid
 from datetime import datetime
 import json
-
+from transformers import pipeline
 from modules.transcriber import transcribe_audio
 from modules.summarizer import generate_summary
 from modules.search import init_db, add_transcript, search_transcripts
 from modules.exporter import generate_pdf
 from utils.format import format_transcript
-
+from utils.sentiments import chunk_transcript, plot_sentiment_timeline, map_score_to_emoji, label_to_score
 app = FastAPI(
     title="Meeting Assistant API",
     description="API for transcribing, summarizing, and searching meeting audio",
@@ -82,12 +82,11 @@ async def upload_audio(
             content = await file.read()
             buffer.write(content)
 
-        
         transcript, duration = transcribe_audio(audio_path, language)
         formatted_transcript = format_transcript(transcript)
         # Generate a summary of the transcript
         summary = generate_summary(formatted_transcript, language)
-
+        print("summar__y ", summary)
         # Store the transcript in the database (in the background)
         background_tasks.add_task(add_transcript, transcript_id, transcript)
 
@@ -147,11 +146,13 @@ async def export_pdf(transcript_id: str, summary: str = Query(...)):
 
     # Extract transcript text
     transcript = " ".join([r["text"] for r in results])
+    sentiment_pipeline = pipeline(
+        "sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
+    chunks = chunk_transcript(transcript)
 
-    # Generate summary
-    # summary = generate_summary(transcript)
-
-    # Create PDF
+    sentiments = [sentiment_pipeline(chunk)[0] for chunk in chunks]
+    scores = [label_to_score(s['label']) for s in sentiments]
+    plot_sentiment_timeline(scores)
     pdf_path = generate_pdf(transcript_id, transcript, summary_dict)
 
     # Return the PDF file for download

@@ -1,5 +1,5 @@
 """
-This file is just for dry run purpose , nothing significant to project. 
+🔼 This file is just for dry run purpose , nothing significant to project. 
 """
 from exporter import generate_pdf
 from transformers import pipeline
@@ -57,10 +57,10 @@ def format_transcript(raw_transcript: str) -> str:
 new_transcript = format_transcript(test_transcript)
 
 # Test the summarizer
-# summary = generate_summary(new_transcript)
+summary = generate_summary(new_transcript)
 
 # Print the results
-# print(json.dumps(summary, indent=2))
+print(json.dumps(summary, indent=2))
 
 sentiment_pipeline = pipeline(
     "sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
@@ -141,27 +141,27 @@ def plot_sentiment_timeline(scores, chunk_duration_secs=30):
     plt.yticks(range(1, 6))  # sentiment scores range
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("output/sentiment_timeline2.png")
+    plt.savefig("sentiment_timeline.png")
     plt.close()
     print("✅ Enhanced sentiment timeline saved as 'sentiment_timeline.png'")
 
 
-# Load summarization pipeline for topic extraction
-topic_pipe = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+# # Load summarization pipeline for topic extraction
+# topic_pipe = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
 
-# Generate a short topic/summary per chunk
-def get_chunk_topics(chunks):
-    topics = []
-    for chunk in chunks:
-        try:
-            summary = topic_pipe(chunk[:1024], max_length=10, min_length=2, do_sample=False)[0]['summary_text']
-            topics.append(summary.strip())
-        except:
-            topics.append("Unknown Topic")
-    return topics
+# # Generate a short topic/summary per chunk
+# def get_chunk_topics(chunks):
+#     topics = []
+#     for chunk in chunks:
+#         try:
+#             summary = topic_pipe(chunk[:1024], max_length=10, min_length=2, do_sample=False)[0]['summary_text']
+#             topics.append(summary.strip())
+#         except:
+#             topics.append("Unknown Topic")
+#     return topics
 
-chunk_topics = get_chunk_topics(chunks)
-def generate_sentiment_shift_summary(scores, topics=None):
+# chunk_topics = get_chunk_topics(chunks)
+# def generate_sentiment_shift_summary(scores, topics=None):
     labels = ["Very Negative", "Negative", "Neutral", "Positive", "Very Positive"]
     emojis = ["😢", "🙁", "😐", "🙂", "😄"]
 
@@ -183,8 +183,8 @@ def generate_sentiment_shift_summary(scores, topics=None):
         return "Sentiment remained relatively consistent throughout the session. " + emojis[label(scores[0])]
 
     return " ".join(shifts)
-shift_summary = generate_sentiment_shift_summary(scores, chunk_topics)
-print("\n🧠 Sentiment Insight:\n", shift_summary)
+# shift_summary = generate_sentiment_shift_summary(scores, chunk_topics)
+# print("\n🧠 Sentiment Insight:\n", shift_summary)
 
 # plot_sentiment_timeline(scores)
 
