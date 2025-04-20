@@ -29,22 +29,24 @@ This is the **backend** for a multilingual AI meeting assistant built for the **
 
 ## 🧪 Local Setup
 
-### 1. Clone the repo
-
 ```bash
 git clone https://github.com/your-username/holon-note-agent
-
+```
+```
 pip install -r requiremnents.txt
-
+```
+```
 uvicorn main:app --reload
+```
 
-Visit Swagger Docs
+### Visit Swagger Docs
+```
 Go to: http://127.0.0.1:8000/docs
 ```
 
 ### API Endpoints
 
 Endpoint Method Description
-`/upload_audio` POST Uploads and transcribes audio
-`/search?q=keyword` GET Searches transcript for keywords
-`/export_pdf` GET Exports the summary as a PDF
+- `/upload_audio` POST Uploads and transcribes audio
+- `/search?q=keyword` GET Searches transcript for keywords
+- `/export_pdf` GET Exports the summary as a PDF along with sentimental analysis
